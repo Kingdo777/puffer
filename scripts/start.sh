@@ -21,7 +21,7 @@ fi
 if [ "$SANDBOX" == "container" ]; then
   CRI_SOCK="/run/containerd/containerd.sock"
 else
-  CRI_SOCK="/etc/puffer-cri/puffer-cri.sock"
+  CRI_SOCK="/run/puffer/puffer.sock"
 fi
 
 LOG_DIR=~/tmp/puffer-logs/

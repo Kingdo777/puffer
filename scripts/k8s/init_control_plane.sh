@@ -5,7 +5,7 @@ current_script_path="$(dirname "$0" | xargs realpath)"
 CRI_SOCK=$1
 
 if [ -z "$CRI_SOCK" ]; then
-  CRI_SOCK="/etc/puffer-cri/puffer-cri.sock"
+  CRI_SOCK="/run/puffer/puffer.sock"
 fi
 
 function wait_for_pods_running() {

@@ -45,6 +45,7 @@ command_exists firecracker
 echo -e "\e[34mOK.\e[0m"
 
 echo -n -e "\e[34mSetup Puffer Environment...\e[0m"
-sudo mkdir -p /etc/puffer-cri
+sudo mkdir -p /run/puffer
+sudo mkdir -p /var/lib/puffer
 echo -e "\e[34mDone.\e[0m"
 

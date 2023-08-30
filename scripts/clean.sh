@@ -24,7 +24,8 @@ sudo pkill -9 puffer
 ifconfig -a | grep _tap | cut -f1 -d":" | while read line ; do sudo ip link delete "$line" ; done
 ifconfig -a | grep tap_ | cut -f1 -d":" | while read line ; do sudo ip link delete "$line" ; done
 bridge -j vlan |jq -r '.[].ifname'| while read line ; do sudo ip link delete "$line" ; done
-sudo rm -rf /etc/puffer-cri/puffer-cri.sock
+sudo rm -rf /run/puffer/*
+sudo rm -rf /var/lib/puffer/*
 
 echo -e "\e[31mCleaning Firecracker...\e[0m"
 "$scripts_path"/firecracker/clean.sh

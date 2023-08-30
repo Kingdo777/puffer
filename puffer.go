@@ -50,7 +50,7 @@ func main() {
 	debug := flag.Bool("dbg", false, "Enable debug logging")
 
 	isMetricsMode = flag.Bool("metrics", false, "Calculate UPF metrics")
-	criSock = flag.String("criSock", "/etc/puffer-cri/puffer-cri.sock", "Socket address for CRI service")
+	criSock = flag.String("criSock", "/run/puffer/puffer.sock", "Socket address for CRI service")
 	hostIface = flag.String("hostIface", "", "Host net-interface for the VMs to bind to for internet access")
 	sandbox := flag.String("sandbox", "firecracker", "Sandbox tech to use, valid options: firecracker, gvisor")
 	flag.Parse()

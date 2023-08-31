@@ -161,3 +161,42 @@ echo Creating thinpool for devmapper
 "$current_script_path"/create_devmapper.sh
 echo Done.
 echo
+
+# https://github.com/Kingdo777/firecracker-containerd-puffer/blob/main/docs/scaling.md#scaling-the-number-of-firecracker-microvms-per-host
+
+echo Configuring firecracker-containerd for Scaling the number of Firecracker microVMs per host...
+# Lines to be added
+lines_to_add=(
+    "* soft nofile 1000000"
+    "* hard nofile 1000000"
+    "root soft nofile 1000000"
+    "root hard nofile 1000000"
+    "* soft nproc 4000000"
+    "* hard nproc 4000000"
+    "root soft nproc 4000000"
+    "root hard nproc 4000000"
+    "* soft stack 65536"
+    "* hard stack 65536"
+    "root soft stack 65536"
+    "root hard stack 65536"
+)
+# Path to the limits.conf file
+limits_conf="/etc/security/limits.conf"
+# Check if each line already exists in the file
+for line in "${lines_to_add[@]}"; do
+    if ! grep -qF "$line" "$limits_conf"; then
+        sudo sh -c "echo $line >> $limits_conf"
+    fi
+done
+
+# provision the ARP cache to avoid garbage collection
+sudo sysctl -q -w net.ipv4.neigh.default.gc_thresh1=1024
+sudo sysctl -q -w net.ipv4.neigh.default.gc_thresh2=2048
+sudo sysctl -q -w net.ipv4.neigh.default.gc_thresh3=4096
+sudo sysctl -q -w net.ipv4.ip_local_port_range="32769 65535"
+
+# configure the maximum number of processes and threads in the system.
+sudo sysctl -q -w kernel.pid_max=4194303
+sudo sysctl -q -w kernel.threads-max=999999999
+
+echo Done.

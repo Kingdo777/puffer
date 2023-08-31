@@ -28,7 +28,7 @@ LOG_DIR=~/tmp/puffer-logs/
 sudo mkdir -p -m777 -p ${LOG_DIR}
 
 echo -e "\e[32mRunning the stock containerd daemon...\e[0m"
-sudo systemctl restart containerd
+sudo systemctl start containerd
 
 if [ "$SANDBOX" == "firecracker" ]; then
   echo -e "\e[32mRunning the firecracker-containerd daemon...\e[0m"

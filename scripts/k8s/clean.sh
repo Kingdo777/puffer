@@ -11,6 +11,3 @@ sudo sh -c "iptables -F && iptables -t nat -F && iptables -t mangle -F && iptabl
 rm -rf "${HOME}"/.kube
 sudo rm -rf /root/.kube
 
-sudo systemctl restart containerd
-
-

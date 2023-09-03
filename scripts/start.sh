@@ -32,13 +32,13 @@ sudo systemctl start containerd
 
 if [ "$SANDBOX" == "firecracker" ]; then
   echo -e "\e[32mRunning the firecracker-containerd daemon...\e[0m"
-  sudo sh -c "firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>${LOG_DIR}/firecracker-containerd.out 2>${LOG_DIR}/firecracker-containerd.err &"
+  sudo sh -c "firecracker-containerd --config /etc/firecracker-containerd/config.toml 1>${LOG_DIR}/firecracker-containerd.log 2>&1 &"
   echo -e "\e[32mBuilding puffer...\e[0m"
   pushd >/dev/null "$project_root_path" || exit
   https_proxy=http://ip:port go build -o puffer
   popd >/dev/null || exit
   echo -e "\e[32mRunning puffer...\e[0m"
-  sudo sh -c "$project_root_path/puffer -dbg 1>${LOG_DIR}/puffer.out 2>${LOG_DIR}/puffer.err &"
+  sudo sh -c "$project_root_path/puffer -dbg 1>${LOG_DIR}/puffer.log 2>&1 &"
 fi
 
 echo -e "\e[32mIniting the Kubernetes ...\e[0m"

@@ -8,7 +8,8 @@ sudo pkill -9 firecracker-containerd
 sudo pkill -9 firecracker
 
 echo Removing devmapper devices
-for de in $(sudo dmsetup ls| cut -f1|grep thinpool); do sudo dmsetup remove "$de" && echo - Removed "$de"; done
+for de in $(sudo dmsetup ls| cut -f1|grep "fc-dev-thinpool-snap"); do sudo dmsetup remove "$de" && echo - Removed "$de"; done
+sudo dmsetup remove fc-dev-thinpool &&  echo - Removed fc-dev-thinpool
 sudo rm -rf /var/lib/firecracker-containerd/snapshotter/devmapper/*
 
 echo "Cleaning /run/firecracker-containerd /var/lib/firecracker-containerd"

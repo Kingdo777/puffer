@@ -21,6 +21,9 @@ if [ -n "$fc_dev_thinpool" ]; then
 fi
 sudo rm -rf /var/lib/firecracker-containerd/snapshotter/devmapper/*
 
+echo Cleaning VM snapshots
+sudo rm -rf /var/lib/puffer/snapshots
+
 echo "Cleaning /run/firecracker-containerd /var/lib/firecracker-containerd"
 sudo rm -rf /var/lib/firecracker-containerd/containerd/
 sudo rm -rf /var/lib/firecracker-containerd/shim-base

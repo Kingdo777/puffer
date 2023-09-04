@@ -171,11 +171,9 @@ func (fs *FirecrackerService) RemoveContainer(ctx context.Context, r *criapi.Rem
 	log.Debugf("RemoveContainer for %q", r.GetContainerId())
 	containerID := r.GetContainerId()
 
-	go func() {
-		if err := fs.coordinator.stopVM(context.Background(), containerID); err != nil {
-			log.WithError(err).Error("failed to stop microVM")
-		}
-	}()
+	if err := fs.coordinator.stopVM(context.Background(), containerID); err != nil {
+		log.WithError(err).Error("failed to stop microVM")
+	}
 
 	return fs.stockRuntimeClient.RemoveContainer(ctx, r)
 }

@@ -59,7 +59,8 @@ type StartVMResponse struct {
 }
 
 const (
-	testImageName = "registry.cn-hangzhou.aliyuncs.com/kingdo_puffer/function-helloworld-python:latest"
+	testImageName = "docker.io/library/nginx:1.17-alpine"
+	//testImageName = "registry.cn-hangzhou.aliyuncs.com/kingdo_puffer/function-helloworld-python:latest"
 )
 
 // StartVM Boots a VM if it does not exist
@@ -99,9 +100,8 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageNa
 	startVMMetric.MetricMap[metrics.GetImage] = metrics.ToUS(time.Since(tStart))
 
 	tStart = time.Now()
-	req := o.getVMCreateRequest(vm)
-
-	_, err = o.fcClient.CreateVM(ctx, req)
+	createVMRequest := o.getVMCreateRequest(vm)
+	_, err = o.fcClient.CreateVM(ctx, createVMRequest)
 
 	startVMMetric.MetricMap[metrics.FcCreateVM] = metrics.ToUS(time.Since(tStart))
 	if err != nil {
@@ -195,6 +195,11 @@ func (o *Orchestrator) StartVMWithEnvironment(ctx context.Context, vmID, imageNa
 			}
 		}
 	}()
+
+	if err := os.MkdirAll(o.getVMBaseDir(vmID), 0777); err != nil {
+		logger.Error("Failed to create VM base dir")
+		return nil, nil, err
+	}
 
 	logger.Debug("Successfully started a VM")
 
@@ -432,4 +437,111 @@ func (o *Orchestrator) ResumeVM(ctx context.Context, vmID string) (*metrics.Metr
 	resumeVMMetric.MetricMap[metrics.FcResume] = metrics.ToUS(time.Since(tStart))
 
 	return resumeVMMetric, nil
+}
+
+// CreateSnapshot Creates a snapshot of a VM
+func (o *Orchestrator) CreateSnapshot(ctx context.Context, vmID string) error {
+	logger := log.WithFields(log.Fields{"vmID": vmID})
+	logger.Debug("Orchestrator received CreateSnapshot")
+
+	ctx = namespaces.WithNamespace(ctx, namespaceName)
+
+	req := &proto.CreateSnapshotRequest{
+		VMID:             vmID,
+		MemFilePath:      o.getMemoryFile(vmID),
+		SnapshotFilePath: o.getSnapshotFile(vmID),
+	}
+
+	if _, err := o.fcClient.CreateSnapshot(ctx, req); err != nil {
+		logger.WithError(err).Error("failed to create snapshot of the VM")
+		return err
+	}
+
+	return nil
+}
+
+func (o *Orchestrator) Offload(ctx context.Context, vmID string) error {
+	logger := log.WithFields(log.Fields{"vmID": vmID})
+	logger.Debug("Orchestrator received Offload")
+
+	ctx = namespaces.WithNamespace(ctx, namespaceName)
+
+	vm, err := o.vmPool.GetVM(vmID)
+	if err != nil {
+		var nonExistErr *misc.NonExistErr
+		if errors.As(err, &nonExistErr) {
+			logger.Panic("Offload: VM does not exist")
+		}
+		logger.Panic("Offload: GetVM() failed for an unknown reason")
+
+	}
+
+	if _, err := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vm.ID}); err != nil {
+		logger.WithError(err).Error("failed to stop the VM")
+		return err
+	}
+
+	if err := o.vmPool.RecreateTap(vmID, o.hostIface); err != nil {
+		logger.Error("Failed to recreate tap upon offloading")
+		return err
+	}
+
+	return nil
+}
+
+func (o *Orchestrator) StartVMFromSnapshot(ctx context.Context, vmID string) (_ *StartVMResponse, _ *metrics.Metric, retErr error) {
+	var (
+		startVMMetric *metrics.Metric = metrics.NewMetric()
+		tStart        time.Time
+	)
+
+	logger := log.WithFields(log.Fields{"vmID": vmID})
+	logger.Debug("StartVM: Received StartVM")
+
+	memoryFile := o.getMemoryFile(vmID)
+	if _, err := os.Stat(memoryFile); os.IsNotExist(err) {
+		return nil, nil, errors.Wrapf(err, "Failed to get memory file for VM %s at %s", vmID, memoryFile)
+	}
+	snapshotFile := o.getSnapshotFile(vmID)
+	if _, err := os.Stat(snapshotFile); os.IsNotExist(err) {
+		return nil, nil, errors.Wrapf(err, "Failed to get snapshot file for VM %s at %s", vmID, snapshotFile)
+	}
+
+	vm, err := o.vmPool.GetVM(vmID)
+	if err != nil {
+		if _, ok := err.(*misc.NonExistErr); ok {
+			logger.Panic("StartVM: VM does not exist")
+		}
+		logger.Panic("StartVM: GetVM() failed for an unknown reason")
+
+	}
+
+	ctx = namespaces.WithNamespace(ctx, namespaceName)
+
+	createVMRequest := o.getVMCreateRequest(vm)
+	createVMRequest.SnapshotCfg = &proto.FirecrackerSnapshotConfiguration{
+		MemFilePath:         memoryFile,
+		SnapshotPath:        snapshotFile,
+		EnableDiffSnapshots: false,
+		ResumeVM:            true,
+	}
+
+	tStart = time.Now()
+	_, err = o.fcClient.CreateVM(ctx, createVMRequest)
+	startVMMetric.MetricMap[metrics.FcCreateVM] = metrics.ToUS(time.Since(tStart))
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "failed to create the microVM in firecracker-containerd")
+	}
+
+	defer func() {
+		if retErr != nil {
+			if _, err := o.fcClient.StopVM(ctx, &proto.StopVMRequest{VMID: vmID}); err != nil {
+				logger.WithError(err).Errorf("failed to stop firecracker-containerd VM after failure")
+			}
+		}
+	}()
+
+	logger.Debug("Successfully started a VM from snapshot")
+
+	return &StartVMResponse{GuestIP: vm.Ni.PrimaryAddress}, startVMMetric, nil
 }

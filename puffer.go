@@ -35,21 +35,16 @@ import (
 )
 
 var (
-	flog *os.File
 	orch *ctriface.Orchestrator
 
-	isMetricsMode *bool
-	criSock       *string
-	hostIface     *string
+	criSock   *string
+	hostIface *string
 )
 
 func main() {
-	var err error
-
 	snapshotter := flag.String("ss", "devmapper", "snapshotter name")
 	debug := flag.Bool("dbg", false, "Enable debug logging")
 
-	isMetricsMode = flag.Bool("metrics", false, "Calculate UPF metrics")
 	criSock = flag.String("criSock", "/run/puffer/puffer.sock", "Socket address for CRI service")
 	hostIface = flag.String("hostIface", "", "Host net-interface for the VMs to bind to for internet access")
 	sandbox := flag.String("sandbox", "firecracker", "Sandbox tech to use, valid options: firecracker, gvisor")
@@ -59,11 +54,6 @@ func main() {
 		log.Fatalln("Only \"firecracker\" are supported as sandboxing-techniques")
 		return
 	}
-
-	if flog, err = os.Create("/tmp/fccd.log"); err != nil {
-		panic(err)
-	}
-	defer flog.Close()
 
 	log.SetFormatter(&log.TextFormatter{
 		TimestampFormat: ctrdlog.RFC3339NanoFixed,
@@ -85,7 +75,7 @@ func main() {
 		orch = ctriface.NewOrchestrator(
 			*snapshotter,
 			*hostIface,
-			ctriface.WithMetricsMode(*isMetricsMode),
+			ctriface.WithSnapshots(true),
 		)
 		setupFirecrackerCRI()
 	}

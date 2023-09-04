@@ -26,6 +26,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
@@ -68,8 +69,10 @@ type Orchestrator struct {
 	client       *containerd.Client
 	fcClient     *fcclient.Client
 	// store *skv.KVStore
-	isMetricsMode bool
-	hostIface     string
+	snapshotsEnabled bool
+	snapshotsDir     string
+	isMetricsMode    bool
+	hostIface        string
 }
 
 // NewOrchestrator Initializes a new orchestrator
@@ -80,10 +83,21 @@ func NewOrchestrator(snapshotter, hostIface string, opts ...OrchestratorOption) 
 	o.vmPool = misc.NewVMPool()
 	o.cachedImages = make(map[string]containerd.Image)
 	o.snapshotter = snapshotter
+	o.snapshotsDir = "/var/lib/puffer/snapshots"
 	o.hostIface = hostIface
 
 	for _, opt := range opts {
 		opt(o)
+	}
+
+	if _, err := os.Stat(o.snapshotsDir); err != nil {
+		if !os.IsNotExist(err) {
+			log.Panicf("Snapshot dir %s exists", o.snapshotsDir)
+		}
+	}
+
+	if err := os.MkdirAll(o.snapshotsDir, 0777); err != nil {
+		log.Panicf("Failed to create snapshots dir %s", o.snapshotsDir)
 	}
 
 	log.Info("Creating containerd client")
@@ -117,4 +131,24 @@ func (o *Orchestrator) setupCloseHandler() {
 // Cleanup Removes the bridges created by the VM pool's tap manager
 func (o *Orchestrator) Cleanup() {
 	o.vmPool.RemoveBridges()
+	if err := os.RemoveAll(o.snapshotsDir); err != nil {
+		log.Panic("failed to delete snapshots dir", err)
+	}
+}
+
+// GetSnapshotsEnabled Returns the snapshots mode of the orchestrator
+func (o *Orchestrator) GetSnapshotsEnabled() bool {
+	return o.snapshotsEnabled
+}
+
+func (o *Orchestrator) getMemoryFile(funcName string) string {
+	return filepath.Join(o.getVMBaseDir(funcName), "mem_file")
+}
+
+func (o *Orchestrator) getSnapshotFile(funcName string) string {
+	return filepath.Join(o.getVMBaseDir(funcName), "snap_file")
+}
+
+func (o *Orchestrator) getVMBaseDir(funcName string) string {
+	return filepath.Join(o.snapshotsDir, funcName)
 }

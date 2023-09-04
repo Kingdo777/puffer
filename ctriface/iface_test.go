@@ -45,7 +45,7 @@ func TestStartContainer(t *testing.T) {
 
 	log.SetLevel(log.DebugLevel)
 
-	testTimeout := 120 * time.Second
+	testTimeout := 300 * time.Second
 	ctx, cancel := context.WithTimeout(namespaces.WithNamespace(context.Background(), namespaceName), testTimeout)
 	defer cancel()
 
@@ -54,13 +54,27 @@ func TestStartContainer(t *testing.T) {
 		"",
 	)
 
-	vmID := "1"
+	vmID := "2"
 
 	_, _, err := orch.StartVM(ctx, vmID, testImageName)
 	require.NoError(t, err, "Failed to start VM")
 
-	err = orch.StopSingleVM(ctx, vmID)
-	require.NoError(t, err, "Failed to stop VM")
+	err = orch.PauseVM(ctx, vmID)
+	require.NoError(t, err, "Failed to pause VM")
+
+	err = orch.CreateSnapshot(ctx, vmID)
+	require.NoError(t, err, "Failed to create snapshot VM")
+
+	err = orch.Offload(ctx, vmID)
+	require.NoError(t, err, "Failed to offload VM")
+
+	for i := 0; i < 10; i++ {
+		_, _, err = orch.StartVMFromSnapshot(ctx, vmID)
+		require.NoError(t, err, "Failed to start VM from snapshot")
+
+		err = orch.Offload(ctx, vmID)
+		require.NoError(t, err, "Failed to offload VM")
+	}
 
 	orch.Cleanup()
 }

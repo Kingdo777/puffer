@@ -1,8 +1,10 @@
 module github.com/Kingdo777/puffer
 
-go 1.20
+go 1.17
 
-replace github.com/firecracker-microvm/firecracker-containerd => github.com/Kingdo777/firecracker-containerd-puffer v0.0.0-20230824064214-6018a110bed4
+replace github.com/firecracker-microvm/firecracker-containerd => github.com/Kingdo777/firecracker-containerd-puffer v0.0.0-20230904161334-6a329a2099f5
+
+//replace github.com/firecracker-microvm/firecracker-containerd => /home/kingdo/GolandProjects/firecracker-containerd-puffer
 
 // consistent with the version used by firecracker-containerd
 replace (
@@ -45,7 +47,7 @@ require (
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/josharian/native v1.1.0 // indirect
-	github.com/klauspost/compress v1.15.6 // indirect
+	github.com/klauspost/compress v1.15.9 // indirect
 	github.com/mdlayher/netlink v1.7.2 // indirect
 	github.com/mdlayher/socket v0.4.1 // indirect
 	github.com/moby/locker v1.0.1 // indirect
@@ -59,12 +61,12 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.11.0 // indirect
 	github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f // indirect
-	go.opencensus.io v0.23.0 // indirect
+	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/net v0.13.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.10.0 // indirect
 	golang.org/x/text v0.11.0 // indirect
-	google.golang.org/genproto v0.0.0-20220617124728-180714bec0ad // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20230525234030-28d5490b6b19 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

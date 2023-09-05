@@ -7,6 +7,11 @@ CORE_COUNT=$(nproc)
 # get current script path
 current_script_path="$(dirname "$0" | xargs realpath)"
 
+INSTALL_FROM_SOURCE=$1
+if [ -z "$INSTALL_FROM_SOURCE" ]; then
+  INSTALL_FROM_SOURCE="build_from_bin"
+fi
+
 echo Installing Docker, Golang, etc.
 sudo apt-get update >/dev/null 2>&1
 sudo apt-get install -y make \
@@ -29,37 +34,62 @@ echo Done.
 echo
 
 echo Installing firecracker-containerd...
-echo - Clone firecracker-containerd-puffer
-pushd >/dev/null "${HOME}" || exit
-rm -rf firecracker-containerd-puffer
-git clone --recurse-submodules https://github.com/Kingdo777/firecracker-containerd-puffer >/dev/null 2>&1
-# 我们必须先编译`image`, 因为image默认是通过容器环境编译的，如果我们先编译image，那么将同时在容器中编译agent
-# 这样的话生成的rootfs将和agent匹配，否则agent将无法启动
-# 否则如果先编译`all`，那么agent就是基于当前环境生产的，此时需要基于当前环境编译image，而之后再编译image时它默认依然是从容器中编译
-# 由于此时agent已经生成，就会跳过编译agent，从而导致agent和rootfs不匹配，如何在本地编译rootfs：https://github.com/firecracker-microvm/firecracker-containerd/tree/main/tools/image-builder
-pushd >/dev/null firecracker-containerd-puffer || exit
-echo - Build rootfs-image
-sg docker -c "https_proxy=http://ip:port make image" >/dev/null 2>&1
-echo - Build firecracker-containerd, firecracker
-sg docker -c "https_proxy=http://ip:port make all firecracker" >/dev/null 2>&1
-echo -n - Checking Build...
-for bin in runtime/containerd-shim-aws-firecracker \
-  firecracker-control/cmd/containerd/firecracker-containerd \
-  firecracker-control/cmd/containerd/firecracker-ctr \
-  bin/firecracker; do
-  if [ ! -f "$bin" ]; then
-    echo -e "\e[31mFailed: $bin is not build.\e[0m"
+if [ "$INSTALL_FROM_SOURCE" == "build_from_bin" ]; then
+  echo - "Downloading && Installing firecracker-containerd and rootfs.img"
+  https_proxy=http://ip:port wget -q --show-progress -O /tmp/firecracker-containerd-puffer-linux-amd64.tar.gz https://github.com/Kingdo777/firecracker-containerd-puffer/releases/download/v1.0.0/firecracker-containerd-puffer-linux-amd64.tar.gz
+  sudo tar -C /usr/local/bin/ -xzf /tmp/firecracker-containerd-puffer-linux-amd64.tar.gz
+  sudo mv /usr/local/bin/rootfs.img /var/lib/firecracker-containerd/runtime/default-rootfs.img
+  echo - "Downloading && Installing firecracker"
+  https_proxy=http://ip:port wget -q --show-progress -O /tmp/firecracker-x86_64-unknown-linux-musl.tar.gz https://github.com/Kingdo777/firecracker-faascale/releases/download/v1.0.0/firecracker-x86_64-unknown-linux-musl.tar.gz
+  sudo tar -C /usr/local/bin/ -xzf /tmp/firecracker-x86_64-unknown-linux-musl.tar.gz
+  echo -n - Checking Install...
+  for bin in firecracker-containerd firecracker-ctr containerd-shim-aws-firecracker firecracker jailer; do
+    if [ ! -f "/usr/local/bin/$bin" ]; then
+      echo -e "\e[31mFailed: $bin is not installed.\e[0m"
+      exit
+    fi
+  done
+  if [ ! -f /var/lib/firecracker-containerd/runtime/default-rootfs.img ]; then
+    echo -e "\e[31mFailed: /var/lib/firecracker-containerd/runtime/default-rootfs.img is not installed.\e[0m"
     exit
   fi
-done
-echo -e "\e[34mOK.\e[0m"
+  echo -e "\e[34mOK.\e[0m"
+elif [ "$INSTALL_FROM_SOURCE" == "build_from_source" ]; then
+  echo - Clone firecracker-containerd-puffer
+  pushd >/dev/null "${HOME}" || exit
+  rm -rf firecracker-containerd-puffer
+  git clone --recurse-submodules https://github.com/Kingdo777/firecracker-containerd-puffer >/dev/null 2>&1
+  # 我们必须先编译`image`, 因为image默认是通过容器环境编译的，如果我们先编译image，那么将同时在容器中编译agent
+  # 这样的话生成的rootfs将和agent匹配，否则agent将无法启动
+  # 否则如果先编译`all`，那么agent就是基于当前环境生产的，此时需要基于当前环境编译image，而之后再编译image时它默认依然是从容器中编译
+  # 由于此时agent已经生成，就会跳过编译agent，从而导致agent和rootfs不匹配，如何在本地编译rootfs：https://github.com/firecracker-microvm/firecracker-containerd/tree/main/tools/image-builder
+  pushd >/dev/null firecracker-containerd-puffer || exit
+  echo - Build rootfs-image
+  sg docker -c "https_proxy=http://ip:port make image" >/dev/null 2>&1
+  echo - Build firecracker-containerd, firecracker
+  sg docker -c "https_proxy=http://ip:port make all firecracker" >/dev/null 2>&1
+  echo -n - Checking Build...
+  for bin in runtime/containerd-shim-aws-firecracker \
+    firecracker-control/cmd/containerd/firecracker-containerd \
+    firecracker-control/cmd/containerd/firecracker-ctr \
+    bin/firecracker; do
+    if [ ! -f "$bin" ]; then
+      echo -e "\e[31mFailed: $bin is not build.\e[0m"
+      exit
+    fi
+  done
+  echo -e "\e[34mOK.\e[0m"
 
-echo - Installing all components
-sudo make install install-firecracker >/dev/null 2>&1
-popd >/dev/null || exit
-popd >/dev/null || exit
-echo Done.
-echo
+  echo - Installing all components
+  sudo make install install-firecracker >/dev/null 2>&1
+  popd >/dev/null || exit
+  popd >/dev/null || exit
+  echo Done.
+  echo
+else
+  echo -e "\e[31mFailed: INSTALL_FROM_SOURCE must be build_from_bin or build_from_source.\e[0m"
+  exit
+fi
 
 echo Downloading kernel from github.com/Kingdo777/linux-5.10-faascale ...
 if [ ! -f /tmp/hello-vmlinux.bin ]; then
@@ -82,7 +112,9 @@ echo
 
 echo Copying rootfs and kernel to /var/lib/firecracker-containerd/runtime
 sudo mkdir -p /var/lib/firecracker-containerd/runtime
-sudo cp ~/firecracker-containerd-puffer/tools/image-builder/rootfs.img /var/lib/firecracker-containerd/runtime/default-rootfs.img
+if [ "$INSTALL_FROM_SOURCE" == "build_from_source" ]; then
+  sudo cp ~/firecracker-containerd-puffer/tools/image-builder/rootfs.img /var/lib/firecracker-containerd/runtime/default-rootfs.img
+fi
 sudo cp /tmp/hello-vmlinux.bin /var/lib/firecracker-containerd/runtime/hello-vmlinux.bin
 echo Done.
 echo

@@ -5,7 +5,7 @@ set -x
 current_script_path="$(dirname "$0" | xargs realpath)"
 
 # Delete Knative Serving
-kn service delete --all > /dev/null 2>&1
+kn service delete --all >/dev/null 2>&1
 
 # Uninstalling Knative https://knative.dev/docs/install/uninstall/#uninstalling-knative
 

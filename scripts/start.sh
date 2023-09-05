@@ -67,10 +67,10 @@ if [ "$SANDBOX" == "container" ]; then
 
 elif [ "$SANDBOX" == "firecracker" ]; then
   kn service create hello \
-      --image registry.cn-hangzhou.aliyuncs.com/kingdo_puffer/stub-helloworld:latest \
-      --port 50051 \
-      --env GUEST_PORT=50051 \
-      --env GUEST_IMAGE="registry.cn-hangzhou.aliyuncs.com/kingdo_puffer/function-helloworld-python:latest"
+    --image registry.cn-hangzhou.aliyuncs.com/kingdo_puffer/stub-helloworld:latest \
+    --port 50051 \
+    --env GUEST_PORT=50051 \
+    --env GUEST_IMAGE="registry.cn-hangzhou.aliyuncs.com/kingdo_puffer/function-helloworld-python:latest"
 
   curl http://hello.default."${LOADBALANCER_IP}".sslip.io
 

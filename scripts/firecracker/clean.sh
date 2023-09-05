@@ -37,5 +37,4 @@ sudo systemctl stop containerd
 sudo rm -rf /run/containerd
 
 echo Recreating devmapper devices
-"$current_script_path"/create_devmapper.sh > /dev/null 2>&1
-
+"$current_script_path"/create_devmapper.sh >/dev/null 2>&1

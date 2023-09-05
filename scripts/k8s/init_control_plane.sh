@@ -125,7 +125,7 @@ kubectl apply -f "$current_script_path"/config/metallb/first-pool.yaml >/dev/nul
 echo Done
 
 echo -n - "Announce The Service IPs (Layer 2 Configuration)..." # https://metallb.universe.tf/configuration/#layer-2-configuration
-kubectl apply -f "$current_script_path"/config/metallb/layer2-config.yaml  >/dev/null 2>&1
+kubectl apply -f "$current_script_path"/config/metallb/layer2-config.yaml >/dev/null 2>&1
 echo Done
 echo
 

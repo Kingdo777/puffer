@@ -11,17 +11,16 @@ scripts_path="$project_root_path/scripts"
 
 # function to check if a command exists
 command_exists() {
-    if ! command -v "$1" &> /dev/null
-    then
-      echo
-      echo -e "\e[31mFailed: $1 could not be found.\e[0m"
-      exit
-    fi
+  if ! command -v "$1" &>/dev/null; then
+    echo
+    echo -e "\e[31mFailed: $1 could not be found.\e[0m"
+    exit
+  fi
 }
 
 echo -n -e "\e[34mInstalling utils ...\e[0m"
-sudo apt-get update > /dev/null 2>&1
-sudo apt-get install -y bridge-utils jq net-tools > /dev/null 2>&1
+sudo apt-get update >/dev/null 2>&1
+sudo apt-get install -y bridge-utils jq net-tools >/dev/null 2>&1
 echo -e "\e[34mDone.\e[0m"
 
 echo -e "\e[34mSetting up Kubernetes Environment...\e[0m"
@@ -48,4 +47,3 @@ echo -n -e "\e[34mSetup Puffer Environment...\e[0m"
 sudo mkdir -p /run/puffer
 sudo mkdir -p /var/lib/puffer
 echo -e "\e[34mDone.\e[0m"
-

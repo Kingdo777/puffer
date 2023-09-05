@@ -7,43 +7,8 @@ CORE_COUNT=$(nproc)
 # get current script path
 current_script_path="$(dirname "$0" | xargs realpath)"
 
-function download_with_progress() {
-  local url="$1"
-  local output_file="$2"
-
-  # 获取文件大小
-  file_size=$(curl -sI "$url" | grep -i "content-length" | awk '{print $2}' | tr -d '\r')
-
-  # 开始下载，并显示进度条
-  curl -o "$output_file" -# "$url" 2>&1 | awk -v file_size="$file_size" '
-    function show_progress(n, size) {
-      pct = n / size
-      bar_width = int(pct * 40)
-      printf "\r["
-      for (i = 0; i < bar_width; i++) printf "="
-      printf ">"
-      for (i = bar_width; i < 40; i++) printf " "
-      printf "] %.2f%%", pct * 100
-    }
-
-    /length/ { size = $2 }
-
-    {
-      if ($0 ~ "^[0-9]+ [0-9]+") {
-        downloaded = $1
-        show_progress(downloaded, size)
-      }
-    }
-
-    END {
-      printf "\n"
-    }
-  '
-  echo "Done."
-}
-
 echo Installing Docker, Golang, etc.
-sudo apt-get update > /dev/null 2>&1
+sudo apt-get update >/dev/null 2>&1
 sudo apt-get install -y make \
   docker-ce \
   golang-go \
@@ -52,36 +17,36 @@ sudo apt-get install -y make \
   e2fsprogs \
   util-linux \
   bc \
-  gnupg > /dev/null 2>&1
+  gnupg >/dev/null 2>&1
 sudo usermod -aG docker "$(whoami)"
 sudo systemctl restart docker
 echo Done.
 echo
 
 echo Installing dmsetup...
-sudo apt-get install -y dmsetup > /dev/null 2>&1
+sudo apt-get install -y dmsetup >/dev/null 2>&1
 echo Done.
 echo
 
 echo Installing firecracker-containerd...
 echo - Clone firecracker-containerd-puffer
-pushd > /dev/null "${HOME}" || exit
+pushd >/dev/null "${HOME}" || exit
 rm -rf firecracker-containerd-puffer
-git clone --recurse-submodules https://github.com/Kingdo777/firecracker-containerd-puffer > /dev/null 2>&1
+git clone --recurse-submodules https://github.com/Kingdo777/firecracker-containerd-puffer >/dev/null 2>&1
 # 我们必须先编译`image`, 因为image默认是通过容器环境编译的，如果我们先编译image，那么将同时在容器中编译agent
 # 这样的话生成的rootfs将和agent匹配，否则agent将无法启动
 # 否则如果先编译`all`，那么agent就是基于当前环境生产的，此时需要基于当前环境编译image，而之后再编译image时它默认依然是从容器中编译
 # 由于此时agent已经生成，就会跳过编译agent，从而导致agent和rootfs不匹配，如何在本地编译rootfs：https://github.com/firecracker-microvm/firecracker-containerd/tree/main/tools/image-builder
-pushd > /dev/null firecracker-containerd-puffer || exit
+pushd >/dev/null firecracker-containerd-puffer || exit
 echo - Build rootfs-image
-sg docker -c "https_proxy=http://ip:port make image" > /dev/null 2>&1
+sg docker -c "https_proxy=http://ip:port make image" >/dev/null 2>&1
 echo - Build firecracker-containerd, firecracker
-sg docker -c "https_proxy=http://ip:port make all firecracker" > /dev/null 2>&1
+sg docker -c "https_proxy=http://ip:port make all firecracker" >/dev/null 2>&1
 echo -n - Checking Build...
 for bin in runtime/containerd-shim-aws-firecracker \
-           firecracker-control/cmd/containerd/firecracker-containerd \
-           firecracker-control/cmd/containerd/firecracker-ctr \
-           bin/firecracker ; do
+  firecracker-control/cmd/containerd/firecracker-containerd \
+  firecracker-control/cmd/containerd/firecracker-ctr \
+  bin/firecracker; do
   if [ ! -f "$bin" ]; then
     echo -e "\e[31mFailed: $bin is not build.\e[0m"
     exit
@@ -90,9 +55,9 @@ done
 echo -e "\e[34mOK.\e[0m"
 
 echo - Installing all components
-sudo make install install-firecracker > /dev/null 2>&1
-popd > /dev/null || exit
-popd > /dev/null || exit
+sudo make install install-firecracker >/dev/null 2>&1
+popd >/dev/null || exit
+popd >/dev/null || exit
 echo Done.
 echo
 
@@ -104,11 +69,11 @@ if [ ! -f /tmp/hello-vmlinux.bin ]; then
     echo -e "\e[31mFailed: /tmp/hello-vmlinux.bin is not downloaded.\e[0m"
     exit
   else
-     echo "8346d69256f41cd2aaa683db65d100b0f04abe16aff73f385faba9d9746fa1b7 /tmp/hello-vmlinux.bin" > /tmp/hello-vmlinux.sha256sum
-     if ! sha256sum -c /tmp/hello-vmlinux.sha256sum > /dev/null 2>&1; then
-       echo -e "\e[31mFailed: /tmp/hello-vmlinux.bin is not downloaded correctly.\e[0m"
-       exit
-     fi
+    echo "8346d69256f41cd2aaa683db65d100b0f04abe16aff73f385faba9d9746fa1b7 /tmp/hello-vmlinux.bin" >/tmp/hello-vmlinux.sha256sum
+    if ! sha256sum -c /tmp/hello-vmlinux.sha256sum >/dev/null 2>&1; then
+      echo -e "\e[31mFailed: /tmp/hello-vmlinux.bin is not downloaded correctly.\e[0m"
+      exit
+    fi
   fi
   echo -e "\e[34mOK.\e[0m"
 fi
@@ -125,7 +90,7 @@ echo
 echo Adding firecracker-containerd config-file and runtime-files
 sudo mkdir -p /etc/firecracker-containerd
 echo - Adding /etc/firecracker-containerd/config.toml
-sudo tee /etc/firecracker-containerd/config.toml > /dev/null 2>&1 <<EOF
+sudo tee /etc/firecracker-containerd/config.toml >/dev/null 2>&1 <<EOF
 version = 2
 disabled_plugins = ["io.containerd.grpc.v1.cri"]
 root = "/var/lib/firecracker-containerd/containerd"
@@ -142,7 +107,7 @@ state = "/run/firecracker-containerd"
   level = "debug"
 EOF
 echo - Adding /etc/containerd/firecracker-runtime.json
-sudo tee /etc/containerd/firecracker-runtime.json > /dev/null 2>&1 <<EOF
+sudo tee /etc/containerd/firecracker-runtime.json >/dev/null 2>&1 <<EOF
 {
   "firecracker_binary_path": "/usr/local/bin/firecracker",
   "kernel_image_path": "/var/lib/firecracker-containerd/runtime/hello-vmlinux.bin",
@@ -167,26 +132,26 @@ echo
 echo Configuring firecracker-containerd for Scaling the number of Firecracker microVMs per host...
 # Lines to be added
 lines_to_add=(
-    "* soft nofile 1000000"
-    "* hard nofile 1000000"
-    "root soft nofile 1000000"
-    "root hard nofile 1000000"
-    "* soft nproc 4000000"
-    "* hard nproc 4000000"
-    "root soft nproc 4000000"
-    "root hard nproc 4000000"
-    "* soft stack 65536"
-    "* hard stack 65536"
-    "root soft stack 65536"
-    "root hard stack 65536"
+  "* soft nofile 1000000"
+  "* hard nofile 1000000"
+  "root soft nofile 1000000"
+  "root hard nofile 1000000"
+  "* soft nproc 4000000"
+  "* hard nproc 4000000"
+  "root soft nproc 4000000"
+  "root hard nproc 4000000"
+  "* soft stack 65536"
+  "* hard stack 65536"
+  "root soft stack 65536"
+  "root hard stack 65536"
 )
 # Path to the limits.conf file
 limits_conf="/etc/security/limits.conf"
 # Check if each line already exists in the file
 for line in "${lines_to_add[@]}"; do
-    if ! grep -qF "$line" "$limits_conf"; then
-        sudo sh -c "echo $line >> $limits_conf"
-    fi
+  if ! grep -qF "$line" "$limits_conf"; then
+    sudo sh -c "echo $line >> $limits_conf"
+  fi
 done
 
 # provision the ARP cache to avoid garbage collection
